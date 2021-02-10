@@ -101,6 +101,9 @@ RUN mkdir -p /home/aws-iot-securetunneling-localproxy/certs && \
     wget https://www.amazontrust.com/repository/AmazonRootCA1.pem && \
 	openssl rehash ./
 
+RUN apt-get install openssh-server \
+	vim
+
 # # Copy the binaries from builder stage.
 
 COPY --from=builder /home/aws-iot-securetunneling-localproxy /home/aws-iot-securetunneling-localproxy
