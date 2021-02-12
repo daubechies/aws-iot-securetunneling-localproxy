@@ -1,121 +1,13 @@
+# Use the latest 2.1 version of CircleCI pipeline process engine. See: https://circleci.com/docs/2.0/configuration-reference
 version: 2.1
+# Use a package of configuration called an orb.
 orbs:
-  jira: circleci/jira@1.1.0
-  node: circleci/node@4.0.0
-  aws-cli: circleci/aws-cli@1.3.0
-  aws-ecr: circleci/aws-ecr@6.12.2
-  helm: circleci/helm@1.1.2
-
-executors:
-  default: aws-ecr/default
-
-commands:
-  assume-role:
-    parameters:
-      account:
-        type: env_var_name
-      role:
-        type: env_var_name
-    steps:
-      - run:
-          name: Assume role
-          command: |
-            echo 'export AWS_ASSUME_ARN="arn:aws:iam::${<<parameters.account>>}:role/${<<parameters.role>>}"' >>$BASH_ENV
-            temp_role=$(aws sts assume-role --role-arn "arn:aws:iam::${<<parameters.account>>}:role/${<<parameters.role>>}" --role-session-name "circle_bot" --profile default) && \
-            aws configure set aws_access_key_id $(echo $temp_role | jq .Credentials.AccessKeyId | xargs) --profile default && \
-            aws configure set aws_secret_access_key $(echo $temp_role | jq .Credentials.SecretAccessKey | xargs) --profile default && \
-            aws configure set aws_session_token $(echo $temp_role | jq .Credentials.SessionToken | xargs) --profile default
-
-  build:
-    parameters:
-      dockerfile:
-        type: string
-      dockercontext:
-        type: string
-      repo:
-        type: string
-      app:
-        type: string
-    steps:
-      - run:
-          name: Set environment
-          command: .deploy/environment.sh
-      - aws-ecr/build-image:
-          dockerfile: << parameters.dockerfile >>
-          region: AWS_DEFAULT_REGION
-          repo: << parameters.repo >>
-          tag: ${CIRCLE_SHA1},latest
-          path: << parameters.dockercontext >>
-      - run:
-          name: Save Docker image
-          command: mkdir -p workspace/<< parameters.app >> && docker save ${AWS_ECR_ACCOUNT_URL}/<< parameters.repo >> > workspace/<< parameters.app >>/app.tar
-      - run:
-          name: Copy environment script
-          command: cp .deploy/environment.sh workspace/<< parameters.app >>/environment.sh
-      - persist_to_workspace:
-          root: workspace
-          paths:
-            - << parameters.app >>/app.tar
-            - << parameters.app >>/environment.sh
-  push:
-    parameters:
-      app:
-        type: string
-      repo:
-        type: string
-    steps:
-      - attach_workspace:
-          at: /tmp/workspace
-      - run:
-          name: Set environment
-          command: /tmp/workspace/<< parameters.app >>/environment.sh
-      - run:
-          name: Load Docker image
-          command: docker load -i /tmp/workspace/<< parameters.app >>/app.tar
-      - aws-cli/setup
-      # Set AWS_ROLE_ACCOUNT, AWS_ROLE_ROLE in environment.sh
-      - assume-role:
-          account: AWS_ROLE_ACCOUNT
-          role: AWS_ROLE_ROLE
-      - run:
-          name: ECR login
-          command: docker login -u AWS -p $(aws ecr get-login-password --region ${AWS_DEFAULT_REGION} --profile default) ${AWS_ECR_ACCOUNT_URL}
-      - aws-ecr/push-image:
-          repo: << parameters.repo >>
-          tag: ${CIRCLE_SHA1},latest
-
-jobs:
-  build:
-    executor: default
-    steps:
-      - checkout
-      - build:
-          app: aws-iot-tunnel
-          dockerfile: Dockerfile
-          repo: aws-iot-securetunneling-localproxy
-          dockercontext: .
-  push:
-    executor: default
-    steps:
-      - push:
-          app: aws-iot-tunnel
-          repo: aws-iot-securetunneling-localproxy
-
+  # Declare a dependency on the welcome-orb
+  welcome: circleci/welcome-orb@0.4.1
+# Orchestrate or schedule a set of jobs
 workflows:
-  version: 2
-  build-push:
+  # Name the workflow "welcome"
+  welcome:
+    # Run the welcome/run job in its own container
     jobs:
-      - build:
-          context: Global
-      - push:
-          context: Global
-          requires:
-            - build
-          filters:
-            branches:
-              only:
-                - master
-                - main
-                - develop
-                - release
-                - release-.*
+      - welcome/run
