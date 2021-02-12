@@ -92,14 +92,14 @@ jobs:
       - build:
           app: aws-iot-tunnel
           dockerfile: Dockerfile
-          repo: prod-aws-iot-tunnel
+          repo: aws-iot-securetunneling-localproxy
           dockercontext: .
   push:
     executor: default
     steps:
       - push:
           app: aws-iot-tunnel
-          repo: prod-aws-iot-tunnel
+          repo: aws-iot-securetunneling-localproxy
 
 workflows:
   version: 2
