@@ -92,7 +92,7 @@ FROM ubuntu:18.04
 # Install openssl for libssl dependency.
 
 RUN apt update && apt upgrade -y && \
-    apt install -y openssl wget && \
+    apt install -y openssl wget openssh-server vim && \
     rm -rf /var/lib/apt/lists/* && \
     apt-get clean
 
@@ -100,10 +100,7 @@ RUN mkdir -p /home/aws-iot-securetunneling-localproxy/certs && \
     cd /home/aws-iot-securetunneling-localproxy/certs && \
     wget https://www.amazontrust.com/repository/AmazonRootCA1.pem && \
 	openssl rehash ./
-
-RUN apt-get install openssh-server \
-	vim
-
+	
 # # Copy the binaries from builder stage.
 
 COPY --from=builder /home/aws-iot-securetunneling-localproxy /home/aws-iot-securetunneling-localproxy
